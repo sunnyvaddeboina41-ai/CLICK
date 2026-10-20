@@ -1,0 +1,35 @@
+Build a complete, real-world ready Progressive Web App (PWA) and backend for an EV charging slot booking startup called 'CLICK' for delivery riders in Hyderabad. 
+
+Integrate the app with Supabase (PostgreSQL) database and implement the industry-standard "Continuous Slot Queuing & Dynamic Buffer Time" workflow along with a complete execution dashboard.
+
+### 1. Core Logic & Real-World Workflow:
+- 10-Minute Grace & Buffer Window: 
+  * Driver A slot ends at 1:50 PM -> App sets relay_status = FALSE (Power OFF) and displays "Session Ended - Transition Window: Please unplug and clear the spot for the next rider."
+  * Buffer Period (1:50 PM - 2:00 PM): Charger power remains OFF (relay_status = FALSE). App displays "Transition Window".
+  * Driver B Slot starts at 2:00 PM -> Upon authentication/arrival, relay_status switches to TRUE (Power ON).
+- 10-Minute No-Show Auto-Release Penalty:
+  * If Driver B does not start charging within 10 minutes of their reserved time (e.g., by 2:10 PM), automatically cancel their reservation, set penalty_status = true, and revert slot_status to 'Available' with relay_status = FALSE.
+
+### 2. Database Schema Requirements (Supabase):
+Create or update the 'charging_stations' table with:
+- id (INT, Primary Key)
+- station_name (TEXT, e.g., 'Madhapur Hub - Socket 1')
+- location (TEXT, e.g., 'Hitec City, Hyderabad')
+- relay_status (BOOLEAN, default false)
+- slot_status (TEXT: 'Charging', 'Buffer', 'Reserved', 'Available')
+- current_rider (TEXT)
+- next_rider (TEXT)
+- slot_start_time (TIMESTAMP)
+- slot_end_time (TIMESTAMP)
+- buffer_end_time (TIMESTAMP)
+
+### 3. API & ESP32 Microcontroller Endpoints:
+- Provide a clean REST API GET endpoint `/api/relay-status?station_id=1` that returns the current `relay_status` (true/false) and `slot_status` so an ESP32 hardware relay can poll it every 3–5 seconds to control physical power supply.
+
+### 4. UI/UX & Execution Roadmap Feature:
+- Rider Charging Dashboard: Clean mobile-responsive layout showing station status, countdown timer for active charging, 10-minute transition countdown, and a primary action button ('Book & Start Charge').
+- Built-in Startup Execution Roadmap Tab: Include a dedicated page/tab in the app UI titled "Hyderabad Launch Roadmap" outlining:
+  1. Hardware Assembly (ESP32 + 30A Relay + ACS712 Sensor + Waterproof Box)
+  2. B2B Station Onboarding (MoU with local tea points/parking hubs in Madhapur/Gachibowli)
+  3. Supabase Cloud Sync & PWA Field Testing
+  4. 30-Day Pilot Run with 10 Zomato/Zepto Riders

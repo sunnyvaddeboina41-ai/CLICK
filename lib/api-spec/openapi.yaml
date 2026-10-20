@@ -1,0 +1,413 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: charging
+    description: Charging station booking and status
+  - name: device
+    description: Read-only state for ESP32 relay controllers
+  - name: riders
+    description: Rider booking eligibility
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /stations:
+    get:
+      operationId: getStations
+      tags: [charging]
+      summary: List charging stations
+      responses:
+        "200":
+          description: Charging stations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Station"
+        "503":
+          description: Supabase is not configured or the station schema is missing
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /stations/{id}:
+    get:
+      operationId: getStation
+      tags: [charging]
+      summary: Get the current state of a charging station
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Current station state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Station"
+        "404":
+          description: Station not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /stations/{id}/book:
+    post:
+      operationId: bookStation
+      tags: [charging]
+      summary: Start charging immediately or reserve the next scheduled slot
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RiderInput"
+      responses:
+        "200":
+          description: Charge started or next slot reserved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StationAction"
+        "400":
+          description: Invalid rider details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Station not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Station is unavailable or the rider has an active penalty
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /stations/{id}/start:
+    post:
+      operationId: startReservedCharge
+      tags: [charging]
+      summary: Start a reservation after the transition window
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RiderInput"
+      responses:
+        "200":
+          description: Reserved charging session started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StationAction"
+        "400":
+          description: Invalid rider details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Station not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Reservation is not ready or the rider missed the start window
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /stations/{id}/finish:
+    post:
+      operationId: finishChargingSession
+      tags: [charging]
+      summary: Finish a charging session and begin the 10-minute buffer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RiderInput"
+      responses:
+        "200":
+          description: Charging ended and the transition buffer started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StationAction"
+        "400":
+          description: Invalid rider details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Station not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: The rider does not own the active charging session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /device/stations/{id}/state:
+    get:
+      operationId: getDeviceStationState
+      tags: [device]
+      summary: Poll relay and slot state from an ESP32
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Relay state for the charging station
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              example: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceStationState"
+        "404":
+          description: Station not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /relay-status:
+    get:
+      operationId: getRelayStatus
+      tags: [device]
+      summary: Poll relay and slot state using a station query parameter
+      parameters:
+        - name: station_id
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: Current relay state for the charging station
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              example: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceStationState"
+        "400":
+          description: Missing or invalid station ID
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Station not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /riders/{riderName}/penalty:
+    get:
+      operationId: getRiderPenalty
+      tags: [riders]
+      summary: Check a rider's no-show cooldown
+      parameters:
+        - name: riderName
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 60
+      responses:
+        "200":
+          description: Current no-show penalty state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PenaltyStatus"
+        "400":
+          description: Invalid rider name
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+    SlotStatus:
+      type: string
+      enum: [Charging, Buffer, Available, Reserved]
+    Station:
+      type: object
+      required:
+        - id
+        - station_name
+        - location
+        - relay_status
+        - slot_status
+        - current_rider
+        - next_rider
+        - buffer_end_time
+        - slot_start_time
+        - slot_end_time
+        - penalty_status
+        - charge_started_at
+        - updated_at
+        - buffer_remaining_seconds
+      properties:
+        id:
+          type: integer
+        station_name:
+          type: string
+        location:
+          type: string
+        relay_status:
+          type: boolean
+        slot_status:
+          $ref: "#/components/schemas/SlotStatus"
+        current_rider:
+          type: [string, "null"]
+        next_rider:
+          type: [string, "null"]
+        buffer_end_time:
+          type: [string, "null"]
+          format: date-time
+        slot_start_time:
+          type: [string, "null"]
+          format: date-time
+        slot_end_time:
+          type: [string, "null"]
+          format: date-time
+        penalty_status:
+          type: boolean
+        charge_started_at:
+          type: [string, "null"]
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        buffer_remaining_seconds:
+          type: integer
+          minimum: 0
+    DeviceStationState:
+      type: object
+      required: [id, relay_status, slot_status, buffer_end_time, updated_at]
+      properties:
+        id:
+          type: integer
+        relay_status:
+          type: boolean
+        slot_status:
+          $ref: "#/components/schemas/SlotStatus"
+        buffer_end_time:
+          type: [string, "null"]
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    RiderInput:
+      type: object
+      required: [rider_name]
+      properties:
+        rider_name:
+          type: string
+          minLength: 1
+          maxLength: 60
+    StationAction:
+      type: object
+      required: [station, action, message]
+      properties:
+        station:
+          $ref: "#/components/schemas/Station"
+        action:
+          type: string
+          enum: [started, reserved, finished]
+        message:
+          type: string
+    PenaltyStatus:
+      type: object
+      required: [rider_name, active, penalty_until, total_no_shows]
+      properties:
+        rider_name:
+          type: string
+        active:
+          type: boolean
+        penalty_until:
+          type: [string, "null"]
+          format: date-time
+        total_no_shows:
+          type: integer
+          minimum: 0
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+

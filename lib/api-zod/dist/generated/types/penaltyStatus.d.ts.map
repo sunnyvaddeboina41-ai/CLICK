@@ -1,0 +1,1 @@
+{"version":3,"file":"penaltyStatus.d.ts","sourceRoot":"","sources":["../../../src/generated/types/penaltyStatus.ts"],"names":[],"mappings":"AAAA;;;;;;GAMG;AAEH,MAAM,WAAW,aAAa;IAC5B,UAAU,EAAE,MAAM,CAAC;IACnB,MAAM,EAAE,OAAO,CAAC;IAChB,gBAAgB;IAChB,aAAa,EAAE,IAAI,GAAG,IAAI,CAAC;IAC3B,iBAAiB;IACjB,cAAc,EAAE,MAAM,CAAC;CACxB"}

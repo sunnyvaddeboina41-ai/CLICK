@@ -1,0 +1,1 @@
+{"version":3,"file":"stationAction.d.ts","sourceRoot":"","sources":["../../../src/generated/types/stationAction.ts"],"names":[],"mappings":"AAAA;;;;;;GAMG;AACH,OAAO,KAAK,EAAE,OAAO,EAAE,MAAM,WAAW,CAAC;AACzC,OAAO,KAAK,EAAE,mBAAmB,EAAE,MAAM,uBAAuB,CAAC;AAEjE,MAAM,WAAW,aAAa;IAC5B,OAAO,EAAE,OAAO,CAAC;IACjB,MAAM,EAAE,mBAAmB,CAAC;IAC5B,OAAO,EAAE,MAAM,CAAC;CACjB"}
